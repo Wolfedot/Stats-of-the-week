@@ -281,7 +281,7 @@ def main():
 
         enabled = stat_queue_ids
         if not enabled:
-            summaries.append((riot_id, "No enabled queues."))
+            summaries.append((riot_id, 0, "No enabled queues."))
             leaderboard.append((riot_id, 0, 0.0, 0.0))
             continue
 
@@ -309,7 +309,7 @@ def main():
 
         games = int(agg["games"] or 0)
         if games == 0:
-            summaries.append((riot_id, f"0 games in last {lookback_days} days"))
+            summaries.append((riot_id, 0, f"0 games in last {lookback_days} days"))
             leaderboard.append((riot_id, 0, 0.0, 0.0))
             continue
 

@@ -19,8 +19,6 @@ api_key = os.getenv("RIOT_API_KEY")
 if not api_key:
     raise RuntimeError("RIOT_API_KEY not set")
 
-TARGET_RIOT_ID = "Hutao#Gojo"  # <-- CHANGE THIS to the account that played Mayhem
-p = next(x for x in cfg["players"] if x["riot_id"] == TARGET_RIOT_ID)
 
 
 # pick first player from config
