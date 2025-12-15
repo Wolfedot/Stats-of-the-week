@@ -9,6 +9,7 @@ import requests
 
 DB_PATH = "stats.db"
 
+
 # ---------- config + helpers ----------
 
 def load_config(path="config.yaml"):
@@ -76,6 +77,19 @@ def enabled_queue_ids(cfg, player=None):
     return {q["id"] for q in src.values()}
 
 # ---------- DB helpers ----------
+
+def ensure_schema(conn):
+    # If the main table exists, schema is already applied
+    row = conn.execute("""
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name='player_match_stats'
+    """).fetchone()
+    if row:
+        return
+
+    # Apply schema from schema.sql
+    with open("schema.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
 
 def ensure_indexes(conn):
     # Optional: speed on bigger datasets
@@ -242,7 +256,7 @@ def ingest(cfg, conn, api_key):
     total_new_matches = 0
     total_new_player_rows = 0
     total_skipped_by_queue = 0
-
+    ensure_schema(conn)
     ensure_indexes(conn)
 
     for p in cfg.get("players", []):
