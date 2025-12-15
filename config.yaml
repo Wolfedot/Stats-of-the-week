@@ -1,0 +1,54 @@
+app:
+  name: "Stats of the Week"
+  timezone: "Europe/London"
+  lookback_days: 7
+  max_matches_per_player: 70
+
+riot:
+  enabled_queues:
+    ranked_solo:
+      id: 420
+      label: "Ranked Solo"
+    ranked_flex:
+      id: 440
+      label: "Ranked Flex"
+    normal_draft:
+      id: 400
+      label: "Normal Draft"
+    aram_mayhem:
+      id: 1700
+      label: "ARAM Mayhem"
+  regions:
+    EUW1:
+      routing: EUROPE
+    EUN1:
+      routing: EUROPE
+
+discord:
+  webhook_url_env: "WEBHOOK_URL"
+  embeds:
+    mode: "per_player"
+    max_players_per_embed: 10
+
+players:
+  - riot_id: "Hutao#Gojo"
+    platform: "EUW1"
+  - riot_id: "Alien#Balls"
+    platform: "EUW1"
+  - riot_id: "Shingus#INTWN"
+    platform: "EUW1"
+  - riot_id: "Mag1c#1204"
+    platform: "EUW1"
+  - riot_id: "Shn0wy#feet"
+    platform: "EUW1"
+  - riot_id: "DiabeticDaddy77#78178"
+    platform: "EUW1"
+  - riot_id: "Austinhio#80085"
+    platform: "EUW1"
+  - riot_id: "Goldrinnus#911"
+    platform: "EUW1"
+  - riot_id: "Groben#Lis"
+    platform: "EUW1"
+  - riot_id: "Youngstroker#Tuah"
+    platform: "EUW1"
+  
