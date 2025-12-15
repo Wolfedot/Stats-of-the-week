@@ -1,8 +1,10 @@
-import sqlite3
+import os, sqlite3
 
-conn = sqlite3.connect("stats.db")
-conn.execute("DELETE FROM ingest_state")
+DB_PATH = os.getenv("DB_PATH", "stats.db")
+
+conn = sqlite3.connect(DB_PATH)
+conn.execute("DELETE FROM ingest_state;")
 conn.commit()
 conn.close()
 
-print("✅ ingest_state cleared (one-time backfill will happen next ingest)")
+print("✅ ingest_state cleared from", DB_PATH)

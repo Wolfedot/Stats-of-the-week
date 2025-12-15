@@ -355,13 +355,25 @@ def main():
         cs_games, csmin = csmin_by_riot_id.get(riot_id, (0, 0.0))
         csmin_line = f"CS/min: **{csmin:.2f}**" if cs_games > 0 else "CS/min: —"
 
+
+        dead_games, total_dead_s, avg_dead_s = time_dead_by_riot_id.get(riot_id, (0, 0, 0.0))
+        if dead_games > 0:
+            dead_block = (
+                f"Average Time Spent Dead: **{(avg_dead_s/60):.1f} min/game**\n"
+                f"Total Time Spent Dead: **{(total_dead_s/60):.1f} min** over **{dead_games} games**"
+            )
+        else:
+            dead_block = "Average Time Spent Dead: —\nTotal Time Spent Dead: —"
+
         block = (
             f"Most Played Role: **{main_role}**\n"
             f"**{games} games** • **{wins}W** • **{winrate:.1f}% WR**\n"
             f"Avg: **{avg_k:.1f}/{avg_d:.1f}/{avg_a:.1f}** • KDA **{kda:.2f}**\n"
             f"{csmin_line}\n"
-            f"Top champs: " + (", ".join(champ_lines) if champ_lines else "—")
+            f"Top champs: " + (", ".join(champ_lines) if champ_lines else "—") + "\n"
+            f"{dead_block}"
         )
+
 
         summaries.append((riot_id, games, block))
         leaderboard.append((riot_id, games, winrate, kda))
@@ -387,7 +399,6 @@ def main():
 
     cs_candidates = []
     for row in players:
-        summaries.sort(key=lambda x: x[1], reverse=True)
         riot_id = row["riot_id"]
         # exclude supports
         if positions.get(riot_id):
@@ -395,6 +406,7 @@ def main():
         games, csmin = csmin_by_riot_id.get(riot_id, (0, 0.0))
         if games >= MIN_GAMES_FOR_CSM:
             cs_candidates.append((riot_id, games, csmin))
+    summaries.sort(key=lambda x: x[1], reverse=True)
     if cs_candidates:
         cs_best = max(cs_candidates, key=lambda x: x[2])
         cs_worst = min(cs_candidates, key=lambda x: x[2])
@@ -490,6 +502,16 @@ def main():
     # -------- Build embeds --------
     divider = "```─────────────────── ❖ ───────────────────```"
 
+
+
+    time_of_the_week = {
+        "title": "YOU KNOW WHAT TIME IT IS",
+        "description": "I the chud son poro :fire: :fire: will be hosting the stats of this week!",
+        "image": {
+            "url": "https://pbs.twimg.com/media/G2rhQpUWQAA0Wy3.jpg"
+        }
+
+    }
     awards_embed = {
         "title": "🏆 Weekly Awards",
         "description": f"Last {lookback_days} days",
@@ -546,7 +568,7 @@ def main():
         })
 
     # Send (max 10 embeds per message)
-    embeds = [awards_embed, leaderboard_embed] + player_embeds
+    embeds = [time_of_the_week, awards_embed, leaderboard_embed] + player_embeds
     for i in range(0, len(embeds), 10):
         post_embeds(webhook_url, embeds[i:i+10])
 

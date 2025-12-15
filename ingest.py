@@ -134,10 +134,36 @@ def match_exists(conn, match_id):
 
 # ---------- Riot Match-v5 ----------
 
-def get_match_ids(puuid, routing, api_key, start_time, end_time, count=100):
+def get_match_ids(puuid, routing, api_key, start_time, end_time, count=200):
     url = f"https://{routing.lower()}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids"
-    params = {"startTime": int(start_time), "endTime": int(end_time), "start": 0, "count": int(count)}
-    return riot_get(url, api_key, params=params)
+    all_ids = []
+    start = 0
+    per_page = 100  # Riot hard limit
+
+    while len(all_ids) < count:
+        batch = riot_get(
+            url,
+            api_key,
+            params={
+                "startTime": int(start_time),
+                "endTime": int(end_time),
+                "start": start,
+                "count": min(per_page, count - len(all_ids)),
+            },
+        )
+
+        if not batch:
+            break
+
+        all_ids.extend(batch)
+
+        # If Riot returned fewer than per_page, we reached the end
+        if len(batch) < per_page:
+            break
+
+        start += per_page
+
+    return all_ids
 
 def get_match(match_id, routing, api_key):
     url = f"https://{routing.lower()}.api.riotgames.com/lol/match/v5/matches/{match_id}"
@@ -218,18 +244,20 @@ def insert_player_match_stats(conn, puuid, match_id, match_json):
 
     conn.execute(
         """
-        INSERT OR IGNORE INTO player_match_stats (
-          puuid, match_id,
-          win, team_id, role, lane, position,
-          champion_id, champion_name,
-          kills, deaths, assists,
-          cs, gold_earned, gold_spent,
-          dmg_to_champs, dmg_taken,
-          vision_score, wards_placed, wards_killed, turret_kills,
-          time_dead_s,
-          game_start_ts, queue_id
+        UPSERT INTO player_match_stats (
+        puuid, match_id,
+        win, team_id, role, lane, position,
+        champion_id, champion_name,
+        kills, deaths, assists,
+        cs, gold_earned, gold_spent,
+        dmg_to_champs, dmg_taken,
+        vision_score, wards_placed, wards_killed, turret_kills,
+        time_dead_s,
+        game_start_ts, queue_id
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(puuid, match_id) DO UPDATE SET
+        time_dead_s = COALESCE(excluded.time_dead_s, player_match_stats.time_dead_s)
         """,
         (
             puuid, match_id,
@@ -286,6 +314,7 @@ def ingest(cfg, conn, api_key):
             )
 
             enabled = enabled_queue_ids(cfg, p)
+            print("[debug] enabled queues for", riot_id, "=", sorted(enabled))
 
             # Process matches newest -> oldest
             for match_id in match_ids:

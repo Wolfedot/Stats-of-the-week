@@ -2,7 +2,7 @@ app:
   name: "Stats of the Week"
   timezone: "Europe/London"
   lookback_days: 7
-  max_matches_per_player: 70
+  max_matches_per_player: 300
 
 riot:
   enabled_queues:
