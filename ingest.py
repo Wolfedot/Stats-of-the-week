@@ -7,7 +7,7 @@ import sqlite3
 import yaml
 import requests
 
-DB_PATH = "stats.db"
+DB_PATH = os.getenv("DB_PATH", "stats.db")
 
 
 # ---------- config + helpers ----------

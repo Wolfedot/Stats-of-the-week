@@ -34,6 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_matches_queue_ts ON matches(queue_id, game_start_
 CREATE TABLE IF NOT EXISTS player_match_stats (
   puuid                 TEXT NOT NULL,
   match_id              TEXT NOT NULL,
+  time_dead_s           INTEGER,
 
   -- outcome/context
   win                   INTEGER NOT NULL,      -- 0/1

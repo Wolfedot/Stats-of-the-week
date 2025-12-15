@@ -1,7 +1,8 @@
 import sqlite3
+import os
 from pathlib import Path
 
-DB_PATH = "stats.db"
+DB_PATH = os.getenv("DB_PATH", "stats.db")
 SCHEMA_PATH = "schema.sql"
 
 def main():
