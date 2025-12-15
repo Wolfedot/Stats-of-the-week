@@ -1,23 +1,26 @@
-import sqlite3
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
+import sqlite3
 from pathlib import Path
 
-DB_PATH = os.getenv("DB_PATH", "stats.db")
-SCHEMA_PATH = "schema.sql"
-
 def main():
-    if not Path(SCHEMA_PATH).exists():
-        raise FileNotFoundError("schema.sql not found")
+    db_path = os.getenv("DB_PATH", "stats.db")
 
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-        schema = f.read()
+    # Ensure the directory exists (important for /data/stats.db on Railway)
+    parent = Path(db_path).expanduser().resolve().parent
+    parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.executescript(schema)
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON;")
+
+    with open("schema.sql", "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+
     conn.commit()
     conn.close()
-
-    print("✅ Database initialized:", DB_PATH)
+    print(f"✅ Database initialized: {db_path}")
 
 if __name__ == "__main__":
     main()
