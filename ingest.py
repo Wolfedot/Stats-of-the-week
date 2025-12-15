@@ -244,7 +244,7 @@ def insert_player_match_stats(conn, puuid, match_id, match_json):
 
     conn.execute(
         """
-        UPSERT INTO player_match_stats (
+        INSERT INTO player_match_stats (
         puuid, match_id,
         win, team_id, role, lane, position,
         champion_id, champion_name,
