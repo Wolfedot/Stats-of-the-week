@@ -1,7 +1,12 @@
-from dotenv import load_dotenv
-load_dotenv()
-
+from dotenv import load_dotenv, find_dotenv
 import os
+
+dotenv_path = find_dotenv()
+print("Loaded .env from:", dotenv_path or "(none found)")
+load_dotenv(dotenv_path, override=True)  # IMPORTANT: override=True
+print("WEBHOOK_URL =", os.getenv("WEBHOOK_URL"))
+
+
 import time
 import sqlite3
 import yaml
@@ -13,6 +18,12 @@ DB_PATH = os.getenv("DB_PATH", "stats.db")
 def load_config(path="config.yaml"):
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+def discord_mention_for_riot_id(cfg, riot_id: str) -> str:
+    for p in cfg.get("players", []):
+        if p.get("riot_id") == riot_id and p.get("discord_id"):
+            return f"<@{p['discord_id']}>"
+    return riot_id  # fallback if missing
 
 def enabled_queue_ids(cfg, player=None):
     src = cfg["riot"]["enabled_queues"]
@@ -49,7 +60,10 @@ def queue_ids_including_labels(cfg, included_prefixes):
 
 
 def post_embeds(webhook_url, embeds):
-    payload = {"embeds": embeds}
+    payload = {
+        "embeds": embeds,
+        "allowed_mentions": {"parse": ["users"]},
+    }
     r = requests.post(webhook_url, json=payload, timeout=15)
     r.raise_for_status()
 
@@ -93,6 +107,45 @@ def compute_weekly_cs_per_min(conn, start_ts, enabled_queues, min_duration_s=600
         r["riot_id"]: (int(r["games"] or 0), float(r["avg_cs_min"] or 0.0))
         for r in rows
     }
+
+
+
+
+def compute_worst_stat_line(conn, start_ts, enabled_queues, min_duration_s=600):
+    if not enabled_queues:
+        return None
+
+    placeholders = ",".join("?" for _ in enabled_queues)
+    params = [start_ts, *enabled_queues, min_duration_s]
+
+    row = conn.execute(
+        f"""
+        SELECT
+          p.riot_id,
+          s.champion_name,
+          s.kills,
+          s.deaths,
+          s.assists,
+          s.win,
+          s.queue_id,
+          m.duration_s
+        FROM player_match_stats s
+        JOIN players p ON p.puuid = s.puuid
+        JOIN matches m ON m.match_id = s.match_id
+        WHERE s.game_start_ts >= ?
+          AND s.queue_id IN ({placeholders})
+          AND m.duration_s >= ?
+          AND s.deaths > 0
+        ORDER BY
+          ((s.kills + s.assists) * 1.0 / s.deaths) ASC,
+          s.deaths DESC,
+          m.duration_s DESC
+        LIMIT 1
+        """,
+        params,
+    ).fetchone()
+
+    return row
 
 def is_support_this_week(conn, puuid, start_ts, threshold=0.6):
     """
@@ -388,9 +441,10 @@ def main():
 
         best_id, best_games, best_kda, bk, bd, ba = best
         worst_id, worst_games, worst_kda, wk, wd, wa = worst
-
-        potw_text = f"**{best_id}** — KDA **{best_kda:.2f}** over **{best_games}** games ({bk}/{bd}/{ba})"
-        lotw_text = f"**{worst_id}** — KDA **{worst_kda:.2f}** over **{worst_games}** games ({wk}/{wd}/{wa})"
+        potw_mention = discord_mention_for_riot_id(cfg, best_id)
+        lotw_mention = discord_mention_for_riot_id(cfg, worst_id)
+        potw_text = f"**{potw_mention}** — KDA **{best_kda:.2f}** over **{best_games}** games ({bk}/{bd}/{ba})"
+        lotw_text = f"**{lotw_mention}** — KDA **{worst_kda:.2f}** over **{worst_games}** games ({wk}/{wd}/{wa})"
 
     # -------- CS/min awards (non-support only) --------
     cs_winner_text = "Not enough data (need at least 3 games, non-support)."
@@ -403,15 +457,34 @@ def main():
         # exclude supports
         if positions.get(riot_id):
             continue
+
         games, csmin = csmin_by_riot_id.get(riot_id, (0, 0.0))
         if games >= MIN_GAMES_FOR_CSM:
             cs_candidates.append((riot_id, games, csmin))
+
     summaries.sort(key=lambda x: x[1], reverse=True)
+
     if cs_candidates:
-        cs_best = max(cs_candidates, key=lambda x: x[2])
-        cs_worst = min(cs_candidates, key=lambda x: x[2])
-        cs_winner_text = f"**{cs_best[0]}** — **{cs_best[2]:.2f} CS/min** over **{cs_best[1]}** games"
-        cs_loser_text  = f"**{cs_worst[0]}** — **{cs_worst[2]:.2f} CS/min** over **{cs_worst[1]}** games"
+        # pick winners
+        cs_best = max(cs_candidates, key=lambda x: x[2])   # highest CS/min
+        cs_worst = min(cs_candidates, key=lambda x: x[2])  # lowest CS/min
+
+        # unpack tuples
+        cs_best_id, cs_best_games, cs_best_csmin = cs_best
+        cs_worst_id, cs_worst_games, cs_worst_csmin = cs_worst
+
+        cs_winping = discord_mention_for_riot_id(cfg, cs_best_id)
+        cs_loseping = discord_mention_for_riot_id(cfg, cs_worst_id)
+        cs_winner_text = (
+            f"**{cs_winping}** — **{cs_best_csmin:.2f} CS/min** "
+            f"over **{cs_best_games}** games"
+        )
+        cs_loser_text = (
+            f"**{cs_loseping}** — **{cs_worst_csmin:.2f} CS/min** "
+            f"over **{cs_worst_games}** games"
+        )
+
+
 
 
 
@@ -423,7 +496,32 @@ def main():
     if aram_like_games:
         winner_id, winner_games = max(aram_like_games.items(), key=lambda x: x[1])
         if winner_games > 0:
-            mayhem_warrior_text = f"**{winner_id}** — **{winner_games} Mayhem games** played"
+            mayhem_mention = discord_mention_for_riot_id(cfg, winner_id)
+            mayhem_warrior_text = f"{mayhem_mention} — **{winner_games} Mayhem games** played"
+        
+    
+    #worst game award
+    worst_game = compute_worst_stat_line(conn, start_ts, stat_queue_ids)
+
+    if worst_game:
+        rid = worst_game["riot_id"]
+        mention = discord_mention_for_riot_id(cfg, rid)
+
+        k = int(worst_game["kills"] or 0)
+        d = int(worst_game["deaths"] or 0)
+        a = int(worst_game["assists"] or 0)
+        kda = (k + a) / d if d else 0.0
+
+        wl = "Win" if worst_game["win"] else "Loss"
+        mins = int(worst_game["duration_s"] or 0) // 60
+
+        worst_stat_line_text = (
+            f"{mention} — **{worst_game['champion_name']}**\n"
+            f"**{k}/{d}/{a}** • KDA **{kda:.2f}** • {wl} • **{mins}m**"
+        )
+    else:
+        worst_stat_line_text = "No eligible games this week."
+
 
 
 
@@ -442,12 +540,12 @@ def main():
         # Highest average time dead per game
         worst_avg = max(avg_dead_candidates, key=lambda x: x[3])
         rid, g, total_dead_s, avg_dead_s = worst_avg
+        mention = discord_mention_for_riot_id(cfg, rid)
 
         avg_dead_award_text = (
-            f"**{rid}** — avg **{(avg_dead_s/60):.1f} min/game** "
+            f"{mention} — avg **{(avg_dead_s/60):.1f} min/game** "
             f"(total **{(total_dead_s/60):.1f} min** over **{g} games**)"
         )
-
 
 
 
@@ -513,21 +611,28 @@ def main():
 
     }
     awards_embed = {
-        "title": "🏆 Weekly Awards",
+        "title": "🏆 Hall of Fame",
         "description": f"Last {lookback_days} days",
         "color": 0xFFD700,
         "fields": [
-            {"name": "\u200b", "value": divider, "inline": False},
             {"name": "👑 Player of the Week (Highest KDA)", "value": potw_text, "inline": False},
-            {"name": "💀 Most Boosted of the Week (Lowest KDA)", "value": lotw_text, "inline": False},
-            {"name": "\u200b", "value": divider, "inline": False},
             {"name": "🌾 CS/min Winner (Non-support)", "value": cs_winner_text, "inline": False},
-            {"name": "🥀 CS/min Loser (Non-support)", "value": cs_loser_text, "inline": False},
-            {"name": "\u200b", "value": divider, "inline": False},
             {"name": "❄️ ARAM Warrior", "value": mayhem_warrior_text, "inline": False},
-            {"name": "🧠 Highest Avg Time Dead / Game", "value": avg_dead_award_text, "inline": False},
+            
 
         ],
+    }
+
+    clown_embed = {
+        "title": ":clown: Hall of Shame",
+        "description": f"Last {lookback_days} days",
+        "color": 0xdb1620,
+        "fields": [
+            {"name": "💀 Most Boosted of the Week (Lowest KDA)", "value": lotw_text, "inline": False},
+            {"name": "🥀 CS/min Loser (Non-support)", "value": cs_loser_text, "inline": False},
+            {"name": "🧠 Highest Avg Time Dead / Game", "value": avg_dead_award_text, "inline": False},
+            {"name": "🧻 Worst Stat Line of the Week", "value": worst_stat_line_text, "inline": False,}
+        ]
     }
 
     leaderboard_embed = {
@@ -568,7 +673,7 @@ def main():
         })
 
     # Send (max 10 embeds per message)
-    embeds = [time_of_the_week, awards_embed, leaderboard_embed] + player_embeds
+    embeds = [time_of_the_week, awards_embed, clown_embed, leaderboard_embed] + player_embeds
     for i in range(0, len(embeds), 10):
         post_embeds(webhook_url, embeds[i:i+10])
 
