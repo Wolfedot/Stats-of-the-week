@@ -493,7 +493,7 @@ def main():
     )
 
     top_lines = []
-    for i, (rid, games, wr, kda) in enumerate(leaderboard_sorted[:10], start=1):
+    for i, (rid, games, wr, kda) in enumerate(leaderboard_sorted[:11], start=1):
         if games == 0:
             top_lines.append(f"{i}. {rid} — 0 games")
         else:
