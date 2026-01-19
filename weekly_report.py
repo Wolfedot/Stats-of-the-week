@@ -96,6 +96,7 @@ def compute_weekly_cs_per_min(conn, start_ts, enabled_queues, min_duration_s=600
         JOIN players p ON p.puuid = s.puuid
         WHERE s.game_start_ts >= ?
           AND s.queue_id IN ({placeholders})
+          AND s.position != 'UTILITY'
           AND m.duration_s IS NOT NULL
           AND m.duration_s >= ?
         GROUP BY p.riot_id
@@ -319,7 +320,7 @@ def main():
     positions = {}     # riot_id -> primary_position
 
     # -------- KDA AWARDS tracking --------
-    MIN_GAMES_FOR_AWARDS = 3
+    MIN_GAMES_FOR_AWARDS = 2
     candidates_for_awards = []  # (riot_id, games, kda, total_k, total_d, total_a)
 
     for row in players:
@@ -449,7 +450,7 @@ def main():
     # -------- CS/min awards (non-support only) --------
     cs_winner_text = "Not enough data (need at least 3 games, non-support)."
     cs_loser_text  = "Not enough data (need at least 3 games, non-support)."
-    MIN_GAMES_FOR_CSM = 3
+    MIN_GAMES_FOR_CSM = 2
 
     cs_candidates = []
     for row in players:
