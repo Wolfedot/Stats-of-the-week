@@ -1,4 +1,5 @@
 from dotenv import load_dotenv, find_dotenv
+from pathlib import Path
 import os
 import time
 import sqlite3
