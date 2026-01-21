@@ -92,3 +92,11 @@ CREATE TABLE IF NOT EXISTS queues (
   queue_id      INTEGER PRIMARY KEY,   -- 420 etc.
   label         TEXT NOT NULL           -- "Ranked Solo"
 );
+
+-- 6) Table for High Scores
+CREATE TABLE IF NOT EXISTS records (
+  key        TEXT PRIMARY KEY,
+  value      REAL NOT NULL,
+  meta_json  TEXT,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);

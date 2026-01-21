@@ -1,12 +1,16 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
 import sqlite3
 import requests
+import os
 from pathlib import Path
 
-DB_PATH = "/data/stats.db"
+DB_PATH = os.getenv("DB_PATH", "stats.db")
+print("Using DB_PATH:", DB_PATH)
+if not Path(DB_PATH).exists():
+    raise FileNotFoundError(f"{DB_PATH} not found")
+
 
 def post_embeds(webhook_url, embeds):
     # Same shape as weekly_report.py
@@ -31,6 +35,7 @@ def worst_game_for_player(conn, puuid):
           END AS kda
         FROM player_match_stats s
         WHERE s.puuid = ?
+            AND NOT (s.kills = 0 AND s.deaths = 0 AND s.assists = 0)
         ORDER BY
           kda ASC,
           s.deaths DESC,
