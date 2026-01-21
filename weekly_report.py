@@ -35,6 +35,12 @@ def load_config(path="config.yaml"):
         return yaml.safe_load(f)
 
 
+def ensure_schema(conn, schema_path="schema.sql"):
+    with open(schema_path, "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
+
+
+
 def discord_mention_for_riot_id(cfg, riot_id: str) -> str:
     for p in cfg.get("players", []):
         if p.get("riot_id") == riot_id and p.get("discord_id"):

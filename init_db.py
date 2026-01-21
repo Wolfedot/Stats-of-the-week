@@ -5,14 +5,16 @@ import os
 import sqlite3
 from pathlib import Path
 
+DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
+
+
 def main():
-    DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
 
     # Ensure the directory exists (important for /data/stats.db on Railway)
-    parent = Path(db_path).expanduser().resolve().parent
+    parent = Path(DB_PATH).expanduser().resolve().parent
     parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
 
     with open("schema.sql", "r", encoding="utf-8") as f:
@@ -20,7 +22,7 @@ def main():
 
     conn.commit()
     conn.close()
-    print(f"✅ Database initialized: {db_path}")
+    print(f"✅ Database initialized: {DB_PATH}")
 
 if __name__ == "__main__":
     main()
