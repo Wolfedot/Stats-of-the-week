@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 
 def main():
-    db_path = os.getenv("DB_PATH", "stats.db")
+    DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
 
     # Ensure the directory exists (important for /data/stats.db on Railway)
     parent = Path(db_path).expanduser().resolve().parent

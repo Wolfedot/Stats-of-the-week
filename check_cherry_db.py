@@ -1,6 +1,7 @@
 import os, sqlite3, time
 
-DB_PATH = os.getenv("DB_PATH", "stats.db")
+DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
+
 start_ts = int(time.time()) - 7*24*60*60
 
 conn = sqlite3.connect(DB_PATH)

@@ -15,6 +15,18 @@ print("WEBHOOK_URL =", os.getenv("WEBHOOK_URL"))
 
 DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
 
+# Ensure parent folder exists (and fail loudly if not writable)
+parent = Path(DB_PATH).parent
+try:
+    parent.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print("❌ Could not create DB directory:", parent, "error:", e)
+
+print("Using DB_PATH:", DB_PATH)
+print("DB parent exists:", parent.exists(), "writable:", os.access(parent, os.W_OK))
+
+conn = sqlite3.connect(DB_PATH)
+
 
 # -------------------- config helpers --------------------
 def load_config(path="config.yaml"):
