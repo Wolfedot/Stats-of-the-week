@@ -13,7 +13,7 @@ print("Loaded .env from:", dotenv_path or "(none found)")
 load_dotenv(dotenv_path, override=True)  # IMPORTANT: override=True
 print("WEBHOOK_URL =", os.getenv("WEBHOOK_URL"))
 
-DB_PATH = os.getenv("DB_PATH", "stats.db")
+DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
 
 
 # -------------------- config helpers --------------------
