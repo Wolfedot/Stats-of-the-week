@@ -6,7 +6,7 @@ import requests
 import os
 from pathlib import Path
 
-DB_PATH = os.getenv("DB_PATH", "stats.db")
+DB_PATH = os.getenv("DB_PATH", "/data/stats.db")
 print("Using DB_PATH:", DB_PATH)
 if not Path(DB_PATH).exists():
     raise FileNotFoundError(f"{DB_PATH} not found")
