@@ -31,7 +31,7 @@ discord:
     max_players_per_embed: 10
 
 players:
-  - riot_id: "Hutao#Gojo"
+  - riot_id: "Walnut#Taooo"
     platform: "EUW1"
     discord_id: "223744270102822912"
   - riot_id: "Alien#Balls"
@@ -55,7 +55,7 @@ players:
   - riot_id: "Goldrinnus#911"
     platform: "EUW1"
     discord_id: "397775111463370754"
-  - riot_id: "slugdar#Lis"
+  - riot_id: "flugdar#bor"
     platform: "EUW1"
     discord_id: "1125837884545585223"
   - riot_id: "Wobblet#GGG"
